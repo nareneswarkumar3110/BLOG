@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CSE-2 Student Blogs 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=Instrument+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#f2f5f9; --ink:#12203a; --muted:#5b6b85; --line:#d5dce8;
+    --card:#ffffff; --accent:#1f5fbf; --accent-ink:#ffffff;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#0f1829; --ink:#e8eefb; --muted:#93a3c0; --line:#26354f; --card:#16233a; --accent:#6aa3ff; --accent-ink:#0f1829; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:"Instrument Sans",system-ui,sans-serif;line-height:1.5}
+  .wrap{max-width:960px;margin:0 auto;padding:56px 20px 48px}
+  h1{font-family:"Bricolage Grotesque",system-ui,sans-serif;font-weight:800;font-size:clamp(2rem,6vw,3.4rem);line-height:1.05;margin:0 0 12px;letter-spacing:-.02em}
+  .sub{margin:0;color:var(--muted)}
+  .sub strong{color:var(--ink);font-weight:500}
+  .tools{display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:32px 0 20px}
+  input[type=search]{flex:1 1 240px;padding:12px 14px;font:inherit;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:10px}
+  input[type=search]:focus{outline:3px solid var(--accent);outline-offset:1px}
+  .count{color:var(--muted);font-size:.95rem}
+  ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+  a.s{display:flex;align-items:center;gap:12px;padding:14px 16px;background:var(--card);border:1px solid var(--line);border-radius:10px;color:var(--ink);text-decoration:none}
+  a.s:hover{border-color:var(--accent)}
+  a.s:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+  .av{flex:none;width:38px;height:38px;border-radius:50%;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;font-family:"Bricolage Grotesque",sans-serif;font-weight:700}
+  .nm{font-weight:500}
+  .host{display:block;color:var(--muted);font-size:.85rem}
+  .empty{display:none;margin-top:24px;color:var(--muted)}
+  footer{margin-top:48px;color:var(--muted);font-size:.9rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1 id="title"></h1>
+    <p class="sub" id="college"></p>
+    <p class="sub">Created and managed by <strong id="manager"></strong></p>
+  </header>
+
+  <div class="tools">
+    <input type="search" id="q" placeholder="Search by student name" aria-label="Search by student name">
+    <span class="count" id="count"></span>
+  </div>
+
+  <ul id="list"></ul>
+  <p class="empty" id="empty">No student matches that name.</p>
+
+  <footer>Select a name to read that student's published blog.</footer>
+</div>
+
+<script>
+/* ===== EDIT THIS SECTION ===== */
+const SITE = {
+  title:   "CSE-2 Student Blogs",
+  college: "Your College Name",          // e.g. your college and year
+  manager: "Your Name"
+};
+
+// Paste the "Publish to web" CSV link of your Google Form responses sheet here.
+// Leave it as "" to use only the STUDENTS list below.
+const SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQpqUa7EW8jsXBfwM-HaR3nO5kLAmrKuZm5IDhxu-KUhM8HdyvuKDhwU_hxej2vQmJPwKH2KlzHYZ6r/pub?gid=115371198&single=true&output=csv";
+
+// File in your repo that the Google Apps Script updates after every form submission.
+const DATA_URL = "students.json";
+
+// Backup list (shown if the sheet link is empty or fails to load).
+// One line per student: name, then the link to their PUBLISHED blog post.
+const STUDENTS = [
+  { name: "STUDENT NAME 1", url: "https://example.blogspot.com/" },
+  { name: "STUDENT NAME 2", url: "https://example.blogspot.com/" },
+  { name: "STUDENT NAME 3", url: "https://example.blogspot.com/" }
+];
+/* ===== END EDIT SECTION ===== */
+
+document.getElementById("title").textContent = SITE.title;
+document.getElementById("college").textContent = SITE.college;
+document.getElementById("manager").textContent = SITE.manager;
+document.title = SITE.title + " 2026";
+
+const list = document.getElementById("list");
+const count = document.getElementById("count");
+const empty = document.getElementById("empty");
+let sorted = [...STUDENTS].sort((a, b) => a.name.localeCompare(b.name));
+
+function host(u){ try { return new URL(u).hostname; } catch(e){ return ""; } }
+
+function render(filter){
+  const f = (filter || "").trim().toLowerCase();
+  list.innerHTML = "";
+  let n = 0;
+  sorted.forEach(s => {
+    if (f && !s.name.toLowerCase().includes(f)) return;
+    n++;
+    const li = document.createElement("li");
+    const a = document.createElement("a");
+    a.className = "s"; a.href = s.url; a.target = "_blank"; a.rel = "noopener";
+    const av = document.createElement("span");
+    av.className = "av"; av.textContent = s.name.trim().charAt(0).toUpperCase();
+    const box = document.createElement("span");
+    const nm = document.createElement("span");
+    nm.className = "nm"; nm.textContent = s.name;
+    const h = document.createElement("span");
+    h.className = "host"; h.textContent = host(s.url);
+    box.append(nm, h);
+    a.append(av, box);
+    li.append(a);
+    list.append(li);
+  });
+  count.textContent = n + (n === 1 ? " blog" : " blogs");
+  empty.style.display = n ? "none" : "block";
+}
+
+function parseCSV(text){
+  const rows = []; let row = [], cur = "", q = false;
+  for (let i = 0; i < text.length; i++){
+    const c = text[i];
+    if (q){
+      if (c === '"' && text[i+1] === '"'){ cur += '"'; i++; }
+      else if (c === '"') q = false;
+      else cur += c;
+    } else if (c === '"') q = true;
+    else if (c === ","){ row.push(cur); cur = ""; }
+    else if (c === "\n"){ row.push(cur); rows.push(row); row = []; cur = ""; }
+    else if (c !== "\r") cur += c;
+  }
+  row.push(cur); rows.push(row);
+  return rows.filter(r => r.some(x => x.trim()));
+}
+
+async function loadSheet(){
+  if (!SHEET_CSV_URL) return;
+  try {
+    const res = await fetch(SHEET_CSV_URL);
+    const rows = parseCSV(await res.text());
+    const head = rows[0].map(h => h.toLowerCase());
+    const ni = head.findIndex(h => h.includes("name"));
+    const ui = head.findIndex(h => h.includes("url") || h.includes("link"));
+    if (ni < 0 || ui < 0) return;
+    const byName = new Map();               // latest submission per student wins
+    rows.slice(1).forEach(r => {
+      const name = (r[ni] || "").trim(), url = (r[ui] || "").trim();
+      if (name && /^https?:\/\//i.test(url)) byName.set(name, { name, url });
+    });
+    if (byName.size){
+      sorted = [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
+      render(document.getElementById("q").value);
+    }
+  } catch (e) { /* keep the backup list */ }
+}
+
+async function loadJSON(){
+  try {
+    const res = await fetch(DATA_URL + "?t=" + Date.now());
+    if (!res.ok) return;
+    const data = await res.json();
+    const ok = data.filter(d => d.name && /^https?:\/\//i.test(d.url));
+    if (ok.length){
+      sorted = ok.sort((a, b) => a.name.localeCompare(b.name));
+      render(document.getElementById("q").value);
+    }
+  } catch (e) { /* keep the backup list */ }
+}
+
+document.getElementById("q").addEventListener("input", e => render(e.target.value));
+render("");
+if (SHEET_CSV_URL) loadSheet(); else loadJSON();
+</script>
+</body>
+</html>
