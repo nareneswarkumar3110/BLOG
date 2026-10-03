@@ -143,10 +143,12 @@ async function loadSheet(){
     const ni = head.findIndex(h => h.includes("name"));
     const ui = head.findIndex(h => h.includes("url") || h.includes("link"));
     if (ni < 0 || ui < 0) return;
-    const byName = new Map();               // latest submission per student wins
-    rows.slice(1).forEach(r => {
-      const name = (r[ni] || "").trim(), url = (r[ui] || "").trim();
-      if (name && /^https?:\/\//i.test(url)) byName.set(name, { name, url });
+    const byName = new Map();
+    rows.slice(1).forEach((r, i) => {
+      const name = (r[ni] || "").trim();
+      let url = (r[ui] || "").trim();
+      if (url && !/^https?:\/\//i.test(url)) url = "https://" + url;
+      if (name && url) byName.set(name + "#" + i, { name, url });
     });
     if (byName.size){
       sorted = [...byName.values()].sort((a, b) => a.name.localeCompare(b.name));
