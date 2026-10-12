@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CSE-2 Student Blogs</title>
+<style>
+  :root{--bg:#0b0d12;--card:#151922;--text:#e8eaf0;--muted:#8b93a7;--accent:#6ea8fe;--border:#252b38}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:var(--bg);color:var(--text)}
+  header{text-align:center;padding:48px 16px 24px}
+  h1{margin:0 0 8px;font-size:clamp(1.6rem,4vw,2.4rem)}
+  header p{margin:0;color:var(--muted)}
+  .tools{max-width:1000px;margin:0 auto;padding:0 16px 16px}
+  #search{width:100%;padding:12px 16px;border-radius:10px;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:1rem}
+  #count{color:var(--muted);font-size:.9rem;margin-top:8px}
+  main{max-width:1000px;margin:0 auto;padding:0 16px 64px;display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;display:flex;flex-direction:column;gap:10px;transition:transform .15s,border-color .15s}
+  .card:hover{transform:translateY(-3px);border-color:var(--accent)}
+  .name{font-weight:600;font-size:1.1rem}
+  .url{color:var(--muted);font-size:.85rem;word-break:break-all}
+  .btn{margin-top:auto;display:inline-block;text-align:center;padding:9px 14px;border-radius:8px;background:var(--accent);color:#0b0d12;text-decoration:none;font-weight:600}
+  .msg{grid-column:1/-1;text-align:center;color:var(--muted);padding:40px 0}
+</style>
+</head>
+<body>
+<header>
+  <h1>CSE-2 Student Blogs</h1>
+  <p>Submit your blog through the form &mdash; it shows up here automatically.</p>
+</header>
+<div class="tools">
+  <input id="search" type="search" placeholder="Search by name...">
+  <div id="count"></div>
+</div>
+<main id="list"><div class="msg">Loading blogs...</div></main>
+
+<script>
+const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRvFogVM_bc3xt-uX5AZwQALfb1RvD6kGrrcb_rpWNN607vccPt94h-HZRJEOK6LYPvu2JUEA_RHpx1/pub?gid=909710246&single=true&output=csv";
+
+let blogs = [];
+
+// Proper CSV parser (handles quotes, commas, newlines inside fields)
+function parseCSV(text){
+  const rows=[]; let row=[], field="", q=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(q){
+      if(c=='"'){ if(text[i+1]=='"'){field+='"';i++;} else q=false; }
+      else field+=c;
+    } else if(c=='"') q=true;
+    else if(c==','){ row.push(field); field=""; }
+    else if(c=='\n'||c=='\r'){
+      if(c=='\r'&&text[i+1]=='\n') i++;
+      row.push(field); field="";
+      if(row.some(x=>x.trim()!=="")) rows.push(row);
+      row=[];
+    } else field+=c;
+  }
+  row.push(field);
+  if(row.some(x=>x.trim()!=="")) rows.push(row);
+  return rows;
+}
+
+function cleanURL(u){
+  u=(u||"").trim();
+  if(!u) return "";
+  if(!/^https?:\/\//i.test(u)) u="https://"+u;
+  try{
+    const p=new URL(u);
+    return (p.protocol==="http:"||p.protocol==="https:")?p.href:"";
+  }catch(e){ return ""; }
+}
+
+function render(){
+  const q=document.getElementById("search").value.trim().toLowerCase();
+  const list=document.getElementById("list");
+  const shown=blogs.filter(b=>b.name.toLowerCase().includes(q));
+  document.getElementById("count").textContent=shown.length+" blog"+(shown.length===1?"":"s");
+  list.innerHTML="";
+  if(!shown.length){
+    const d=document.createElement("div");
+    d.className="msg";
+    d.textContent=blogs.length?"No matches found.":"No blogs submitted yet.";
+    list.appendChild(d);
+    return;
+  }
+  shown.forEach(b=>{
+    const card=document.createElement("div"); card.className="card";
+    const n=document.createElement("div"); n.className="name"; n.textContent=b.name;
+    const u=document.createElement("div"); u.className="url"; u.textContent=b.url.replace(/^https?:\/\//,"");
+    const a=document.createElement("a"); a.className="btn"; a.href=b.url; a.target="_blank"; a.rel="noopener noreferrer"; a.textContent="Visit Blog";
+    card.append(n,u,a); list.appendChild(card);
+  });
+}
+
+async function load(){
+  try{
+    const res=await fetch(CSV_URL+"&t="+Date.now());
+    if(!res.ok) throw new Error(res.status);
+    const rows=parseCSV(await res.text());
+    rows.shift(); // header row
+    const seen=new Set();
+    blogs=rows.map(r=>({name:(r[1]||"").trim(),url:cleanURL(r[2])}))
+      .filter(b=>b.name&&b.url)
+      .filter(b=>{const k=b.url.toLowerCase();if(seen.has(k))return false;seen.add(k);return true;})
+      .sort((a,b)=>a.name.localeCompare(b.name));
+    render();
+  }catch(e){
+    document.getElementById("list").innerHTML='<div class="msg">Could not load the blogs. Please try again later.</div>';
+  }
+}
+
+document.getElementById("search").addEventListener("input",render);
+load();
+</script>
+</body>
+</html>
